@@ -49,8 +49,10 @@ WHILE user wants to enter emplyee:
     Show weekly breakdown
     Ask if another employee should be entered
 """
+
 NUMBER_OF_WEEKS = 4
 
+# Polymorphism
 
 class InvalidSalaryData(Exception):
     def __init__(self, salary, months, bonus):
@@ -183,14 +185,86 @@ class Employee:
             print(f"Expenses: {[ expense['name'] for expense in self.expenses ]}")
         except Exception as e:
             print(f"Error printing summary: {e}")
+    
+    @classmethod
+    def from_dict(cls, data):
+        """
+        Used to create an Employee(or subclass) 
+        from a dictionary for deserialization
+        """
+        obj = cls()
+        obj.details = data['details']
+        obj.salary_details = tuple(data['salary_details'])
+        obj.earnings = tuple(data["earnings"])
+        obj.earner_type = data['earner_type']
+        obj.expenses = data['expenses']
+        obj.expense_names = set(data['expense_names'])
+        obj.weekly_income = data['weekly_income']
+        obj.balance = data['balance']
+        return obj
+    
+    @staticmethod
+    def validate_salary(salary, months, bonus_percent):
+        if salary < 0 or months <= 0 or bonus_percent <= 0:
+            raise InvalidSalaryData(salary, months, bonus_percent)
+    
+    def to_dict(self):
+        return {
+            "details": self.details,
+            "salary_details": self.salary_details,
+            "earnings": self.earnings,
+            "earner_type": self.earner_type,
+            "expenses": self.expenses,
+            "expense_names": list(self.expense_names),
+            "weekly_income": self.weekly_income,
+            "balance": self.balance,
+        }
+    
+class FullTimeEmployee(Employee):
+    def classify_earner(self):
+        net_income = self.earnings[2]
+        if net_income > 1_200_000:
+            self.earner_type = "Top Full-Time earner"
+        elif net_income > 500_000:
+            self.earner_type = "Mid Full-Time earner"
+        else:
+            self.earner_type = "Low Full-Time earner"
 
+class PartTimeEmployee(Employee):
+    def classify_earner(self):
+        net_income = self.earnings[2]
+        if net_income > 600_000:
+            self.earner_type = "Top Part-Time earner"
+        elif net_income > 300_000:
+            self.earner_type = "Mid Part-Time earner"
+        else:
+            self.earner_type = "Low Part-Time earner"
+
+def save_to_file(employees, filename="employees.json"):
+    import json
+    with open(filename, "w") as f:
+        json.dump([employee.to_dict() for employee in employees], f, indent=2)
+
+def load_from_file(filename="employees.json"):
+    import json
+    with open(filename, "r") as file:
+        data = json.load(file)
+        return [Employee.from_dict(employee) for employee in data]
 
 def main():
     add_more = "yes"
     employees = []
 
     while add_more.lower() == "yes":
-        emp = Employee()
+
+        emp_type = input("Enter employee type (full/part/other): ").lower()
+        if emp_type == "full":
+            emp =  FullTimeEmployee()
+        elif emp_type == "part":
+            emp = PartTimeEmployee()
+        else:
+            emp = Employee()
+
         emp.collect_details()
         emp.collect_salary_info()
         emp.calculate_earnings()
@@ -207,8 +281,11 @@ def main():
         except Exception as e:
             print(f"Error reading inout: {e}")
             break
-
+    
+    save_to_file(employees)
     print("\n All employee data entered. Session completed")
+
 
 if __name__ == "__main__":
     main()
+
